@@ -1,11 +1,11 @@
 import { generateAiContent } from "@/app/gimini";
-import { GenerateSummary } from "@/types/ai.types";
+import {  GenerateSummaryBody } from "@/types/ai.types";
 import { ApiResponse } from "@/types/api.types";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
     try {
-        const body:GenerateSummary = await req.json();
+        const body:GenerateSummaryBody = await req.json();
         const{ experienceLevel, skills, jobTitle } = body;
 
         if (!experienceLevel || !skills || !jobTitle) {
