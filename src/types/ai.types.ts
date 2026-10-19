@@ -22,3 +22,7 @@ export interface GenerateExperianceDescriptionBody{
   yearsOfExperience:number;
   jobRole:string
 }
+
+export interface ImproveContentBody{
+  content: string;
+}
