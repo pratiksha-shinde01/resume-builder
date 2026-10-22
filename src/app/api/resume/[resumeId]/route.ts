@@ -39,3 +39,50 @@ export async function GET (req:NextRequest, {params}:{params :Promise <{ resumeI
                 }, { status: 500 });
     }
 }
+
+export async function PATCH (req:NextRequest, {params}:{params :Promise <{ resumeId:string }> }){
+    try {
+        
+        await connectDB()
+
+        const user = await getCurrentUser();
+
+        const body = await req.json()
+
+        const {resumeId} = await params;
+
+        const updatedResume = await ResumeModel.findOneAndUpdate({
+            _id:resumeId,
+            user_id:user.userId
+
+
+        },{
+            $set:body
+        },{
+            new:true,
+            runValidators:true
+        }
+    )
+
+        if(!updatedResume) return NextResponse.json<ApiResponse>({
+            success: false,
+            message:"updatedResume failed to update "
+        } ,{ status: 400}
+    );
+
+    return NextResponse.json<ApiResponse>({
+        success: true,
+        message:"succsessfully Resume updated",
+        data: updatedResume
+    }, {status: 200})
+
+
+    } catch (error) {
+        console.log("error in get updatedResume api", error);
+         return NextResponse.json<ApiResponse>({
+                    message: "Error creating updatedResume",
+                    success: false,
+                }, { status: 500 });
+    }
+}
+
