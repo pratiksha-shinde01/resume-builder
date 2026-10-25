@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { connectDB } from "@/lib/mongodb";
 import ResumeModel from "@/models/Resume.model";
 import { ApiResponse } from "@/types/api.types";
-import next from "next";
+
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
