@@ -1,64 +1,120 @@
+
 import { generateAiContent } from "@/app/gimini";
-import { GenerateExperianceDescriptionBody,  } from "@/types/ai.types";
+import { GenerateExperianceDescriptionBody } from "@/types/ai.types";
 import { ApiResponse } from "@/types/api.types";
 import { NextRequest, NextResponse } from "next/server";
-import { json } from "stream/consumers";
 
 export async function POST(req: NextRequest) {
-    try {
-        const body:GenerateExperianceDescriptionBody = await req.json();
-        const{ experienceLevel,  yearsOfExperience , techStack, jobRole} = body;
+  try {
+    const body: GenerateExperianceDescriptionBody = await req.json();
 
-        if (!experienceLevel  || !yearsOfExperience|| !techStack ||!jobRole) {
-            return NextResponse.json<ApiResponse>({
-                message: "Missing required fields",
-                success: false,
-            }, { status: 400 });
-        } // ✅ CLOSED THE 'if' STATEMENT HERE
+    const {
+      experienceLevel,
+      yearsOfExperience,
+      techStack,
+      jobRole,
+    } = body;
 
-        // This block now executes correctly outside of the if condition
-const prompt = `
+    if (
+      !experienceLevel?.trim() ||
+      yearsOfExperience === undefined ||
+      yearsOfExperience === null ||
+      !Array.isArray(techStack) ||
+      techStack.length === 0 ||
+      !techStack.some(
+        (technology) =>
+          typeof technology === "string" &&
+          technology.trim().length > 0
+      ) ||
+      !jobRole?.trim()
+    ) {
+      return NextResponse.json<ApiResponse>(
+        {
+          message: "Missing required fields",
+          success: false,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      typeof yearsOfExperience !== "number" ||
+      !Number.isFinite(yearsOfExperience) ||
+      yearsOfExperience < 0
+    ) {
+      return NextResponse.json<ApiResponse>(
+        {
+          message: "Invalid years of experience",
+          success: false,
+        },
+        { status: 400 }
+      );
+    }
+
+    const technologies = techStack
+      .filter(
+        (technology): technology is string =>
+          typeof technology === "string"
+      )
+      .map((technology) => technology.trim())
+      .filter(Boolean);
+
+    const prompt = `
 You are an expert resume writer and ATS optimization specialist.
 
-Generate a professional, ATS-friendly work experience description using the following details:
+Generate a professional, ATS-friendly work experience description using:
 
 Experience Level: ${experienceLevel}
 Years of Experience: ${yearsOfExperience}
-Tech Stack: ${techStack.join(", ")}
-Job Role: ${jobRole}
+Tech Stack: ${technologies.join(", ")}
+Job Role: ${jobRole.trim()}
 
 Rules:
-1. Return ONLY the final work experience description as plain text.
-2. Write between 50 and 80 words, inclusive.
-3. Tailor the description to the specified job role and experience level.
-4. Naturally incorporate relevant technologies and ATS-friendly keywords from the provided tech stack.
-5. Use strong action verbs such as Developed, Implemented, Built, Maintained, and Optimized where appropriate.
-6. Ensure the responsibilities described are appropriate for the specified years of experience.
-7. Never invent specific achievements, performance metrics, projects, or business results.
-8. Do not claim expertise in technologies beyond what is provided.
-9. Avoid generic filler, keyword stuffing, repetition, and exaggerated claims.
-10. Use clear, concise, professional, grammatically correct language.
-11. Do not include headings, bullet points, introductions, explanations, or word counts.
-12. Verify that the description contains 50–80 words before responding.
+1. Return only the final description as plain text.
+2. Write 50–80 words.
+3. Tailor the description to the job role and experience level.
+4. Naturally include relevant technologies and ATS-friendly keywords.
+5. Use strong action verbs where appropriate.
+6. Keep responsibilities appropriate to the experience level.
+7. Never invent achievements, metrics, projects, or business results.
+8. Do not claim skills beyond the provided tech stack.
+9. Avoid generic filler and keyword stuffing.
+10. Use clear, professional language.
+11. Do not include headings, bullet points, or word counts.
+12. For a fresher, describe relevant development responsibilities
+    without falsely claiming previous employment.
 
-IMPORTANT:
-Return ONLY the final description as plain text. Do not return JSON, markdown, quotation marks, or any additional text.
+Return only the description. No JSON or markdown.
 `;
-        const result = await generateAiContent(prompt);
-        let workExperianceDescription = result;
 
-       
-        return NextResponse.json<ApiResponse>({
-            message: "workExperianceDescription generated successfully",
-            success: true,
-            data: { workExperianceDescription }
-        }, { status: 201 });
+    const result = await generateAiContent(prompt);
 
-    } catch (error) {
-        console.log("Error generate workExperianceDescription :", error);
-        return NextResponse.json<ApiResponse>({
-            message: "Error creating workExperianceDescription",
-            success: false,
-        }, { status: 500 });
+    if (typeof result !== "string" || !result.trim()) {
+      throw new Error("AI returned an empty description");
     }
+
+    const workExperianceDescription = result.trim();
+
+    return NextResponse.json<ApiResponse>(
+      {
+        message: "Work experience description generated successfully",
+        success: true,
+        data: { workExperianceDescription },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error(
+      "Error generating work experience description:",
+      error
+    );
+
+    return NextResponse.json<ApiResponse>(
+      {
+        message: "Error generating work experience description",
+        success: false,
+      },
+      { status: 500 }
+    );
+  }
 }

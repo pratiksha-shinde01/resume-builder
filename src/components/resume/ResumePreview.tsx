@@ -1,13 +1,8 @@
 
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import type { CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 type PersonalInfo = {
   fullname?: string;
@@ -57,48 +52,66 @@ type ResumePreviewProps = {
   resume: ResumePreviewData;
 };
 
-const sectionTitle: CSSProperties = {
-  fontSize: "12px",
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "1px",
-  borderBottom: "1px solid #D1D5DB",
-  paddingBottom: "5px",
-  marginBottom: "10px",
-  color: "#18181B",
-};
-
-const itemTitle: CSSProperties = {
-  fontSize: "11px",
-  fontWeight: 700,
-  color: "#18181B",
-};
-
-const mutedText: CSSProperties = {
-  fontSize: "10px",
-  color: "#52525B",
-};
-
 const PAGE_WIDTH = 794;
 const PAGE_HEIGHT = 1123;
+const PAGE_PADDING = 54;
+const PAGE_CONTENT_WIDTH = PAGE_WIDTH - PAGE_PADDING * 2;
+
+const sectionHeading =
+  "mb-3 border-b border-slate-200 pb-2 text-[11px] font-bold uppercase tracking-[1.8px] text-black";
+
+const itemHeading = "text-[12px] font-bold leading-5 text-slate-900";
+
+const bodyText =
+  "whitespace-pre-wrap break-words text-[11px] leading-[1.7] text-slate-700";
+
+const mutedText = "text-[10px] leading-relaxed text-slate-500";
+
+function hasContent(value?: string) {
+  return Boolean(value?.trim());
+}
 
 function formatDate(value?: string) {
   if (!value) return "";
 
-  const date = new Date(value);
+  const match = value.match(/^(\d{4})-(\d{2})(?:-\d{2})?$/);
 
-  if (!Number.isNaN(date.getTime()) && value.length > 7) {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      year: "numeric",
-    });
+  if (match) {
+    const month = Number(match[2]) - 1;
+
+    if (month >= 0 && month < 12) {
+      return `${new Date(2000, month, 1).toLocaleString("en-US", {
+        month: "short",
+      })} ${match[1]}`;
+    }
   }
 
-  return value;
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      });
 }
 
-function hasContent(value?: string) {
-  return Boolean(value?.trim());
+function dateRange(start?: string, end?: string) {
+  return [formatDate(start), formatDate(end)].filter(Boolean).join(" – ");
+}
+
+function cleanUrl(value?: string) {
+  if (!value?.trim()) return undefined;
+
+  const url = value.trim();
+
+  if (/^https?:\/\//i.test(url)) return url;
+
+  if (/^[\w.-]+\.[a-z]{2,}(\/.*)?$/i.test(url)) {
+    return `https://${url}`;
+  }
+
+  return undefined;
 }
 
 function ResumeDocument({ resume }: ResumePreviewProps) {
@@ -109,454 +122,560 @@ function ResumeDocument({ resume }: ResumePreviewProps) {
   );
 
   const experience = (resume.workExperience ?? []).filter(
-    (item) =>
-      item.company || item.position || item.description
+    (item) => item.company || item.position || item.description
   );
 
   const projects = (resume.projects ?? []).filter(
     (item) => item.title || item.description
   );
 
-  const skills = resume.skills ?? [];
-  const certifications = resume.certifications ?? [];
+  const skills = (resume.skills ?? []).filter(hasContent);
+  const certifications = (resume.certifications ?? []).filter(hasContent);
+
   const fullName = info.fullname?.trim() || "Your Name";
 
-  const dateRange = (start?: string, end?: string) =>
-    [formatDate(start), formatDate(end)]
-      .filter(Boolean)
-      .join(" – ");
+  const [pages, setPages] = useState<string[][]>([]);
+  const [layoutReady, setLayoutReady] = useState(false);
 
-  return (
-    <article
-      className="resume-paper mx-auto min-h-[1123px] w-[794px] bg-white p-[54px] text-zinc-900"
-      style={{
-        fontFamily: "Arial, Helvetica, sans-serif",
-        overflowWrap: "anywhere",
-        boxSizing: "border-box",
-      }}
-    >
-      <header className="border-b-2 border-zinc-800 pb-4">
-        <h1 className="text-2xl font-bold tracking-tight">
-          {fullName}
-        </h1>
+  const rootRef = useRef<HTMLDivElement>(null);
 
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-zinc-600">
-          {info.email && <span>{info.email}</span>}
-          {info.mobile && <span>{info.mobile}</span>}
-          {info.location && <span>{info.location}</span>}
+  const links = [
+    { label: "LinkedIn", url: cleanUrl(info.linkedIn) },
+    { label: "GitHub", url: cleanUrl(info.github) },
+    { label: "Portfolio", url: cleanUrl(info.portfolio) },
+  ].filter((item) => item.url);
+
+  const header = (
+    <header className="mb-6 border-b-2 border-indigo-700 pb-5">
+      <h1 className="break-words text-[28px] font-extrabold leading-tight tracking-tight text-slate-950">
+        {fullName}
+      </h1>
+
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5 text-[10px] leading-relaxed text-slate-600">
+        {info.email && <span>{info.email}</span>}
+        {info.mobile && <span>{info.mobile}</span>}
+        {info.location && <span>{info.location}</span>}
+      </div>
+
+      {links.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-medium text-indigo-700">
+          {links.map((link) => (
+            <a
+              key={link.label}
+              href={link.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {link.label}
+            </a>
+          ))}
         </div>
-
-        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
-          {info.linkedIn && (
-            <a href={info.linkedIn} className="text-blue-700">
-              LinkedIn
-            </a>
-          )}
-          {info.github && (
-            <a href={info.github} className="text-blue-700">
-              GitHub
-            </a>
-          )}
-          {info.portfolio && (
-            <a href={info.portfolio} className="text-blue-700">
-              Portfolio
-            </a>
-          )}
-        </div>
-      </header>
-
-      {hasContent(resume.summary) && (
-        <section className="mt-5">
-          <h2 style={sectionTitle}>
-            Professional Summary
-          </h2>
-          <p className="whitespace-pre-wrap text-[11px] leading-[1.6] text-zinc-700">
-            {resume.summary}
-          </p>
-        </section>
       )}
+    </header>
+  );
 
-      {education.length > 0 && (
-        <section className="mt-5">
-          <h2 style={sectionTitle}>Education</h2>
-          <div className="space-y-3">
-            {education.map((item, index) => (
-              <div key={`${item.institution}-${index}`}>
-                <div className="flex flex-wrap justify-between gap-2">
-                  <h3 style={itemTitle}>
-                    {item.degree || "Degree"}
-                  </h3>
-                  <span style={mutedText}>
+  const sections: ReactNode[] = [];
+
+  if (hasContent(resume.summary)) {
+    sections.push(
+      <section
+        key="summary"
+        data-resume-section
+        className="resume-section mt-5"
+      >
+        <h2 className={sectionHeading}>Professional Summary</h2>
+        <p className={bodyText}>{resume.summary}</p>
+      </section>
+    );
+  }
+
+  if (experience.length) {
+    sections.push(
+      <section
+        key="experience"
+        data-resume-section
+        className="resume-section mt-5"
+      >
+        <h2 className={sectionHeading}>Work Experience</h2>
+
+        <div className="space-y-4">
+          {experience.map((item, index) => (
+            <div key={`${item.company}-${index}`} className="resume-entry">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <h3 className={itemHeading}>
+                  {item.position || item.company || "Experience"}
+                </h3>
+
+                {dateRange(item.startDate, item.endDate) && (
+                  <span className={mutedText}>
                     {dateRange(item.startDate, item.endDate)}
                   </span>
-                </div>
-
-                {item.institution && (
-                  <p style={mutedText}>{item.institution}</p>
                 )}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
 
-      {experience.length > 0 && (
-        <section className="mt-5">
-          <h2 style={sectionTitle}>Work Experience</h2>
-          <div className="space-y-3">
-            {experience.map((item, index) => (
-              <div key={`${item.company}-${index}`}>
-                <div className="flex flex-wrap justify-between gap-2">
-                  <h3 style={itemTitle}>
-                    {item.position || item.company}
-                  </h3>
-                  <span style={mutedText}>
+              {item.company &&
+                item.position &&
+                item.company.trim().toLowerCase() !==
+                  item.position.trim().toLowerCase() && (
+                  <p className={mutedText}>{item.company}</p>
+                )}
+
+              {hasContent(item.description) && (
+                <p className={`${bodyText} mt-1.5`}>
+                  {item.description}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (education.length) {
+    sections.push(
+      <section
+        key="education"
+        data-resume-section
+        className="resume-section mt-5"
+      >
+        <h2 className={sectionHeading}>Education</h2>
+
+        <div className="space-y-3">
+          {education.map((item, index) => (
+            <div
+              key={`${item.institution}-${index}`}
+              className="resume-entry"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <h3 className={itemHeading}>
+                  {item.degree || "Degree"}
+                </h3>
+
+                {dateRange(item.startDate, item.endDate) && (
+                  <span className={mutedText}>
                     {dateRange(item.startDate, item.endDate)}
                   </span>
-                </div>
-
-                {item.company && item.position && (
-                  <p style={mutedText}>{item.company}</p>
-                )}
-
-                {hasContent(item.description) && (
-                  <p className="mt-1 whitespace-pre-wrap text-[11px] leading-[1.6] text-zinc-700">
-                    {item.description}
-                  </p>
                 )}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
 
-      {projects.length > 0 && (
-        <section className="mt-5">
-          <h2 style={sectionTitle}>Projects</h2>
-          <div className="space-y-3">
-            {projects.map((project, index) => (
-              <div key={`${project.title}-${index}`}>
-                <h3 style={itemTitle}>
+              {item.institution && (
+                <p className={`${mutedText} mt-0.5`}>
+                  {item.institution}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (projects.length) {
+    sections.push(
+      <section
+        key="projects"
+        data-resume-section
+        className="resume-section mt-5"
+      >
+        <h2 className={sectionHeading}>Projects</h2>
+
+        <div className="space-y-4">
+          {projects.map((project, index) => {
+            const github = cleanUrl(project.githubUrl);
+            const live = cleanUrl(project.LiveUrl);
+
+            return (
+              <div
+                key={`${project.title}-${index}`}
+                className="resume-entry"
+              >
+                <h3 className={itemHeading}>
                   {project.title || "Project"}
                 </h3>
 
                 {hasContent(project.description) && (
-                  <p className="mt-1 whitespace-pre-wrap text-[11px] leading-[1.6] text-zinc-700">
+                  <p className={`${bodyText} mt-1`}>
                     {project.description}
                   </p>
                 )}
 
-                {project.techstack &&
-                  project.techstack.length > 0 && (
-                    <p className="mt-1 text-[10px] text-zinc-600">
-                      <strong>Tech Stack:</strong>{" "}
-                      {project.techstack.join(", ")}
-                    </p>
-                  )}
+                {project.techstack?.length ? (
+                  <p className={`${mutedText} mt-1.5 break-words`}>
+                    <span className="font-bold text-slate-700">
+                      Technologies:
+                    </span>{" "}
+                    {project.techstack.join(", ")}
+                  </p>
+                ) : null}
 
-                <div className="mt-1 flex flex-wrap gap-3 text-[10px]">
-                  {project.githubUrl && (
-                    <a
-                      href={project.githubUrl}
-                      className="text-blue-700"
-                    >
-                      GitHub
-                    </a>
-                  )}
+                {(github || live) && (
+                  <div className="mt-1.5 flex flex-wrap gap-4 text-[10px] font-medium text-indigo-700">
+                    {github && (
+                      <a href={github} target="_blank" rel="noreferrer">
+                        GitHub
+                      </a>
+                    )}
 
-                  {project.LiveUrl && (
-                    <a
-                      href={project.LiveUrl}
-                      className="text-blue-700"
-                    >
-                      Live Demo
-                    </a>
-                  )}
-                </div>
+                    {live && (
+                      <a href={live} target="_blank" rel="noreferrer">
+                        Live Demo
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        </section>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
+  if (skills.length) {
+    sections.push(
+      <section
+        key="skills"
+        data-resume-section
+        className="resume-section mt-5"
+      >
+        <h2 className={sectionHeading}>Technical Skills</h2>
+        <p className="break-words text-[11px] leading-[1.9] text-slate-700">
+          {skills.join("  •  ")}
+        </p>
+      </section>
+    );
+  }
+
+  if (certifications.length) {
+    sections.push(
+      <section
+        key="certifications"
+        data-resume-section
+        className="resume-section mt-5"
+      >
+        <h2 className={sectionHeading}>Certifications</h2>
+
+        <ul className="list-disc space-y-1.5 pl-4 text-[11px] leading-relaxed text-slate-700">
+          {certifications.map((certification, index) => (
+            <li key={`${certification}-${index}`}>{certification}</li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
+  const buildPages = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const measuredHeader =
+      root.querySelector<HTMLElement>("[data-measure-header]");
+
+    const source =
+      root.querySelector<HTMLElement>("[data-measure-sections]");
+
+    if (!measuredHeader || !source) return;
+
+    const headerHeight = measuredHeader.getBoundingClientRect().height;
+    const availableHeight = PAGE_HEIGHT - PAGE_PADDING * 2 - 38;
+
+    const sectionElements = Array.from(
+      source.querySelectorAll<HTMLElement>(
+        ":scope > [data-resume-section]"
+      )
+    );
+
+    const newPages: string[][] = [];
+    let currentPage: string[] = [];
+    let usedHeight = headerHeight + 24;
+
+    for (const section of sectionElements) {
+      const style = window.getComputedStyle(section);
+
+      const sectionHeight =
+        section.getBoundingClientRect().height +
+        (parseFloat(style.marginTop) || 0) +
+        (parseFloat(style.marginBottom) || 0);
+
+      if (
+        currentPage.length > 0 &&
+        usedHeight + sectionHeight > availableHeight
+      ) {
+        newPages.push(currentPage);
+        currentPage = [];
+        usedHeight = 0;
+      }
+
+      currentPage.push(section.outerHTML);
+      usedHeight += sectionHeight;
+    }
+
+    if (currentPage.length) newPages.push(currentPage);
+
+    setPages(newPages.length ? newPages : [[]]);
+    setLayoutReady(true);
+  }, []);
+
+  useEffect(() => {
+    setLayoutReady(false);
+
+    let frameOne = 0;
+    let frameTwo = 0;
+
+    frameOne = requestAnimationFrame(() => {
+      frameTwo = requestAnimationFrame(buildPages);
+    });
+
+    const root = rootRef.current;
+    const observer = new ResizeObserver(() => buildPages());
+
+    if (root) observer.observe(root);
+
+    document.fonts.ready.then(() => buildPages());
+
+    return () => {
+      cancelAnimationFrame(frameOne);
+      cancelAnimationFrame(frameTwo);
+      observer.disconnect();
+    };
+  }, [buildPages, resume]);
+
+  return (
+    <div ref={rootRef} className="relative w-full min-w-0">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none invisible absolute left-0 top-0"
+        style={{ width: PAGE_CONTENT_WIDTH }}
+      >
+        <div data-measure-header>{header}</div>
+        <div data-measure-sections>{sections}</div>
+      </div>
+
+      {!layoutReady ? (
+        <article
+          className="resume-paper relative mx-auto bg-white text-slate-900 shadow-xl"
+          style={{
+            width: PAGE_WIDTH,
+            minHeight: PAGE_HEIGHT,
+            padding: PAGE_PADDING,
+            boxSizing: "border-box",
+          }}
+        >
+          {header}
+          <div>{sections}</div>
+        </article>
+      ) : (
+        <div className="flex w-full min-w-0 flex-col items-center gap-6">
+          {pages.map((page, index) => (
+            <article
+              key={index}
+              className="resume-paper relative mx-auto flex flex-col bg-white text-slate-900 shadow-xl"
+              style={{
+                width: PAGE_WIDTH,
+                minHeight: PAGE_HEIGHT,
+                padding: PAGE_PADDING,
+                boxSizing: "border-box",
+              }}
+            >
+              {index === 0 && header}
+
+              <div
+                className="resume-page-content flex-1"
+                dangerouslySetInnerHTML={{ __html: page.join("") }}
+              />
+
+              <footer className="mt-6 flex justify-between border-t border-slate-200 pt-3 text-[9px] font-medium tracking-wider text-slate-400">
+                <span>RESUME</span>
+                <span>
+                  PAGE {index + 1} OF {pages.length}
+                </span>
+              </footer>
+            </article>
+          ))}
+        </div>
       )}
 
-      {skills.length > 0 && (
-        <section className="mt-5">
-          <h2 style={sectionTitle}>Technical Skills</h2>
-          <p className="text-[11px] leading-[1.8] text-zinc-700">
-            {skills.join("  •  ")}
-          </p>
-        </section>
-      )}
+      <style jsx global>{`
+        .resume-paper {
+          font-family: Arial, Helvetica, sans-serif;
+          overflow-wrap: anywhere;
+        }
 
-      {certifications.length > 0 && (
-        <section className="mt-5">
-          <h2 style={sectionTitle}>Certifications</h2>
-          <ul className="list-disc space-y-1 pl-4 text-[11px] leading-[1.6] text-zinc-700">
-            {certifications.map((certification, index) => (
-              <li key={`${certification}-${index}`}>
-                {certification}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </article>
+        .resume-entry {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        @page {
+          size: A4;
+          margin: 0;
+        }
+
+        @media print {
+          .resume-paper {
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            break-after: page;
+            page-break-after: always;
+          }
+
+          .resume-paper:last-child {
+            break-after: auto;
+            page-break-after: auto;
+          }
+        }
+      `}</style>
+    </div>
   );
 }
 
-export default function ResumePreview({
-  resume,
-}: ResumePreviewProps) {
-  const [focusMode, setFocusMode] = useState(false);
-  const [zoom, setZoom] = useState(50);
-  const [fitZoom, setFitZoom] = useState(50);
+export default function ResumePreview({ resume }: ResumePreviewProps) {
+  const [zoom, setZoom] = useState(85);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   const previewRef = useRef<HTMLDivElement>(null);
-  const focusViewportRef = useRef<HTMLDivElement>(null);
-  const documentRef = useRef<HTMLDivElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
 
+  const scale = zoom / 100;
+  const scaledPageWidth = PAGE_WIDTH * scale;
+  const scaledPageHeight = PAGE_HEIGHT * scale;
+
+  const zoomIn = () => {
+    setZoom((current) => Math.min(150, current + 10));
+  };
+
+  const zoomOut = () => {
+    setZoom((current) => Math.max(30, current - 10));
+  };
+
   const updateFitZoom = useCallback(() => {
-    const viewport = focusMode
-      ? focusViewportRef.current
-      : previewRef.current;
+    const container = previewRef.current;
+    if (!container) return;
 
-    if (!viewport || !documentRef.current) return;
+    const availableWidth = Math.max(container.clientWidth - 40, 100);
+    const fit = Math.floor((availableWidth / PAGE_WIDTH) * 100);
 
-    const availableWidth = Math.max(
-      viewport.clientWidth - 24,
-      100
-    );
-
-    const availableHeight = Math.max(
-      viewport.clientHeight - 24,
-      200
-    );
-
-    const pageHeight = Math.max(
-      documentRef.current.scrollHeight,
-      PAGE_HEIGHT
-    );
-
-    const scale = Math.min(
-      availableWidth / PAGE_WIDTH,
-      availableHeight / pageHeight,
-      1
-    );
-
-    const percentage = Math.max(
-      10,
-      Math.min(100, Math.floor(scale * 100))
-    );
-
-    setFitZoom(percentage);
-    setZoom(percentage);
-  }, [focusMode]);
+    setZoom(Math.min(100, Math.max(30, fit)));
+  }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(updateFitZoom, 100);
+    updateFitZoom();
 
-    window.addEventListener("resize", updateFitZoom);
+    const container = previewRef.current;
+    if (!container) return;
 
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("resize", updateFitZoom);
-    };
-  }, [updateFitZoom, resume]);
+    const observer = new ResizeObserver(() => updateFitZoom());
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [updateFitZoom]);
 
   useEffect(() => {
-    if (!focusMode) return;
+    if (!isFocusMode) return;
 
     const previousOverflow = document.body.style.overflow;
 
+    document.body.style.overflow = "hidden";
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setFocusMode(false);
+        setIsFocusMode(false);
       }
     };
 
-    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [focusMode]);
+  }, [isFocusMode]);
 
-  const openFocusMode = () => {
-    setFocusMode(true);
-    setZoom(fitZoom);
-  };
+  const handleDownloadPDF = async () => {
+    const element = downloadRef.current;
 
-  const closeFocusMode = () => {
-    setFocusMode(false);
-  };
+    if (!element || isDownloading) return;
 
-  const zoomIn = () =>
-    setZoom((current) => Math.min(current + 10, 150));
+    setIsDownloading(true);
 
-  const zoomOut = () =>
-    setZoom((current) => Math.max(current - 10, 10));
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] =
+        await Promise.all([
+          import("html2canvas-pro"),
+          import("jspdf"),
+        ]);
 
-const handleDownloadPDF = async () => {
-  const element = downloadRef.current;
+      await document.fonts.ready;
 
-  if (!element || isDownloading) return;
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
 
-  setIsDownloading(true);
-
-  try {
-    const [{ default: html2canvas }, { default: jsPDF }] =
-      await Promise.all([
-        import("html2canvas-pro"),
-        import("jspdf"),
-      ]);
-
-    // Wait until fonts and layout are ready.
-    await document.fonts.ready;
-
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      windowWidth: 794,
-      logging: false,
-      width: 794,
-      height: element.scrollHeight,
-      onclone: (clonedDocument) => {
-        const clonedElement =
-          clonedDocument.querySelector(
-            "[data-resume-pdf-source]"
-          ) as HTMLElement | null;
-
-        if (clonedElement) {
-          clonedElement.style.position = "static";
-          clonedElement.style.left = "0";
-          clonedElement.style.top = "0";
-          clonedElement.style.width = "794px";
-          clonedElement.style.background = "#ffffff";
-        }
-      },
-    });
-
-    if (canvas.width === 0 || canvas.height === 0) {
-      throw new Error("Resume canvas is empty.");
-    }
-
-    const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
-
-    const pageWidth = 210;
-    const pageHeight = 297;
-    const imageData = canvas.toDataURL("image/jpeg", 0.98);
-
-    // Split a long resume into A4 pages.
-    const renderedPageHeight =
-      (canvas.height * pageWidth) / canvas.width;
-
-    let remainingHeight = renderedPageHeight;
-    let position = 0;
-
-    pdf.addImage(
-      imageData,
-      "JPEG",
-      0,
-      position,
-      pageWidth,
-      renderedPageHeight
-    );
-
-    remainingHeight -= pageHeight;
-
-    while (remainingHeight > 0) {
-      position = remainingHeight - renderedPageHeight;
-      pdf.addPage();
-
-      pdf.addImage(
-        imageData,
-        "JPEG",
-        0,
-        position,
-        pageWidth,
-        renderedPageHeight
+      const pages = Array.from(
+        element.querySelectorAll<HTMLElement>(".resume-paper")
       );
 
-      remainingHeight -= pageHeight;
-    }
+      if (!pages.length) {
+        throw new Error("Resume pages are not ready.");
+      }
 
-    const filename = `${
-      (resume.personalInfo?.fullname || "my-resume")
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      for (let index = 0; index < pages.length; index++) {
+        const canvas = await html2canvas(pages[index], {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          width: PAGE_WIDTH,
+          height: PAGE_HEIGHT,
+          windowWidth: PAGE_WIDTH,
+          logging: false,
+        });
+
+        if (index > 0) pdf.addPage();
+
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", 0.98),
+          "JPEG",
+          0,
+          0,
+          210,
+          297
+        );
+      }
+
+      const filename = (resume.personalInfo?.fullname || "my-resume")
         .trim()
-        .replace(/[^a-z0-9-_]/gi, "-")
-    }.pdf`;
+        .replace(/[^a-z0-9-_]/gi, "-");
 
-    pdf.save(filename);
-  } catch (error) {
-    console.error("PDF download failed:", error);
-    window.alert("PDF download nahi ho paya. Please try again.");
-  } finally {
-    setIsDownloading(false);
-  }
-};
-
-
-  const zoomControls = (
-    <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#151515] px-3 py-2 print:hidden">
-      <span className="text-xs font-medium text-gray-300">
-        Zoom
-      </span>
-
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={zoomOut}
-          disabled={zoom <= 10}
-          aria-label="Zoom out"
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-lg text-white transition hover:bg-white/10 disabled:opacity-40"
-        >
-          −
-        </button>
-
-        <span className="min-w-[42px] text-center text-xs tabular-nums text-gray-200">
-          {zoom}%
-        </span>
-
-        <button
-          type="button"
-          onClick={zoomIn}
-          disabled={zoom >= 150}
-          aria-label="Zoom in"
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-lg text-white transition hover:bg-white/10 disabled:opacity-40"
-        >
-          +
-        </button>
-
-        <button
-          type="button"
-          onClick={updateFitZoom}
-          className="rounded-lg border border-violet-500/40 px-3 py-2 text-xs font-medium text-violet-300 transition hover:bg-violet-500/10"
-        >
-          Fit
-        </button>
-      </div>
-    </div>
-  );
+      pdf.save(`${filename || "my-resume"}.pdf`);
+    } catch (error) {
+      console.error("PDF download failed:", error);
+      window.alert("PDF download nahi ho paya. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
-    <div className="min-w-0">
-      {/* Preview toolbar */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 print:hidden">
+    <div className="w-full min-w-0">
+      {/* Preview heading and download */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-white">
+          <h2 className="text-base font-semibold tracking-tight text-white">
             Live Preview
           </h2>
           <p className="mt-1 text-xs text-gray-400">
-            Click the resume to focus
+            Clean, professional A4 resume
           </p>
         </div>
 
@@ -564,198 +683,192 @@ const handleDownloadPDF = async () => {
           type="button"
           onClick={handleDownloadPDF}
           disabled={isDownloading}
-          className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:text-sm"
+          className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/20 transition hover:bg-violet-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isDownloading
-            ? "Generating PDF..."
-            : "Download PDF"}
+          {isDownloading ? "Generating PDF..." : "Download PDF"}
         </button>
       </div>
 
-      {zoomControls}
+      {/* Normal preview zoom controls */}
+      <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#151515] px-3 py-2.5">
+        <span className="text-xs font-medium text-gray-300">
+          Preview zoom
+        </span>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={zoomOut}
+            disabled={zoom <= 30}
+            aria-label="Zoom out"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-lg text-white transition hover:bg-white/10 disabled:opacity-40"
+          >
+            −
+          </button>
+
+          <span className="min-w-[42px] text-center text-xs tabular-nums text-white">
+            {zoom}%
+          </span>
+
+          <button
+            type="button"
+            onClick={zoomIn}
+            disabled={zoom >= 150}
+            aria-label="Zoom in"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-lg text-white transition hover:bg-white/10 disabled:opacity-40"
+          >
+            +
+          </button>
+
+          <button
+            type="button"
+            onClick={updateFitZoom}
+            className="rounded-lg border border-violet-500/40 px-3 py-2 text-xs font-medium text-violet-300 transition hover:bg-violet-500/10"
+          >
+            Fit
+          </button>
+        </div>
+      </div>
 
       {/* Normal preview */}
       <div
         ref={previewRef}
-        className="mt-3 flex cursor-zoom-in justify-center overflow-hidden rounded-xl bg-[#292735] p-3 print:hidden"
-        style={{
-          height: "calc(100dvh - 250px)",
-          minHeight: "320px",
-          maxHeight: "850px",
-        }}
+        className="w-full min-w-0 overflow-auto rounded-2xl border border-white/10 bg-[#24232d] p-3 sm:p-5"
       >
         <div
-          onClick={openFocusMode}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              openFocusMode();
-            }
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="Open resume focus mode"
-          className="h-fit origin-top"
+          className="relative mx-auto"
           style={{
-            transform: `scale(${zoom / 100})`,
-            transformOrigin: "top center",
+            width: scaledPageWidth,
+            height: scaledPageHeight,
           }}
         >
           <div
-            ref={documentRef}
-            className="resume-print-area bg-white shadow-2xl"
+            className="absolute left-0 top-0 cursor-zoom-in"
+            style={{
+              width: PAGE_WIDTH,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+            }}
+            onClick={() => setIsFocusMode(true)}
+            role="button"
+            tabIndex={0}
+            aria-label="Open resume focus preview"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setIsFocusMode(true);
+              }
+            }}
           >
             <ResumeDocument resume={resume} />
           </div>
         </div>
       </div>
 
-      <p className="mt-2 text-center text-[11px] text-gray-500 print:hidden">
-        Click the page to open Focus Mode · Press Esc to close
-      </p>
-
-      {/* Dedicated PDF source, separate from zoom and focus mode */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "fixed",
-          left: "-10000px",
-          top: 0,
-          width: `${PAGE_WIDTH}px`,
-          background: "#ffffff",
-          pointerEvents: "none",
-          zIndex: -1,
-        }}
-      >
-       <div
-  ref={downloadRef}
-  data-resume-pdf-source
-  style={{
-    width: `${PAGE_WIDTH}px`,
-    background: "#ffffff",
-  }}
->
-  <ResumeDocument resume={resume} />
-</div>
-      </div>
+      {/* Focus mode backdrop */}
+      {isFocusMode && (
+        <div
+          className="fixed inset-0 z-[9998] bg-black/70 backdrop-blur-md"
+          onClick={() => setIsFocusMode(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Focus mode */}
-      {focusMode && (
+      {isFocusMode && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col bg-black/75 p-3 backdrop-blur-md sm:p-5 print:hidden"
           role="dialog"
           aria-modal="true"
-          aria-label="Resume focus mode"
+          aria-label="Resume focus preview"
+          className="fixed inset-0 z-[9999] flex flex-col overflow-y-auto bg-[#111111]/95 px-3 py-4 sm:px-6 sm:py-6"
         >
-          <div className="mx-auto mb-3 flex w-full max-w-6xl items-center justify-between gap-3">
+          <div className="sticky top-0 z-10 mx-auto mb-5 flex w-full max-w-5xl shrink-0 items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#191919]/95 px-4 py-3 shadow-lg backdrop-blur">
             <div>
-              <h2 className="text-base font-semibold text-white sm:text-lg">
-                Resume Focus
-              </h2>
-              <p className="mt-1 text-xs text-gray-400">
-                Inspect your resume without distractions
+              <p className="text-sm font-semibold text-white">
+                Resume Preview
+              </p>
+              <p className="text-xs text-gray-400">
+                Press Esc to close
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={closeFocusMode}
-              className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/20 sm:px-4"
-            >
-              ✕ <span className="hidden sm:inline">Close</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={zoomOut}
+                disabled={zoom <= 30}
+                aria-label="Zoom out"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-white hover:bg-white/10 disabled:opacity-40"
+              >
+                −
+              </button>
+
+              <span className="min-w-[42px] text-center text-xs text-white">
+                {zoom}%
+              </span>
+
+              <button
+                type="button"
+                onClick={zoomIn}
+                disabled={zoom >= 150}
+                aria-label="Zoom in"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-white hover:bg-white/10 disabled:opacity-40"
+              >
+                +
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+                className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-50 sm:px-4 sm:text-sm"
+              >
+                {isDownloading ? "Generating..." : "Download PDF"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsFocusMode(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-white transition hover:bg-white/10"
+                aria-label="Close preview"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
-          <div className="mx-auto mb-3 w-full max-w-6xl">
-            {zoomControls}
-          </div>
-
-          <div
-            ref={focusViewportRef}
-            className="flex min-h-0 flex-1 justify-center overflow-auto rounded-xl border border-white/10 bg-[#24232D] p-3 sm:p-5"
-          >
+          <div className="flex w-full flex-col items-center gap-6 overflow-x-auto pb-8">
             <div
-              className="h-fit origin-top"
+              className="relative shrink-0"
               style={{
-                transform: `scale(${zoom / 100})`,
-                transformOrigin: "top center",
-                marginBottom: `${Math.max(0, zoom - 100) * 8}px`,
+                width: scaledPageWidth,
+                height: scaledPageHeight,
               }}
             >
-              <div className="bg-white shadow-2xl">
+              <div
+                style={{
+                  width: PAGE_WIDTH,
+                  transform: `scale(${scale})`,
+                  transformOrigin: "top left",
+                }}
+              >
                 <ResumeDocument resume={resume} />
               </div>
             </div>
           </div>
-
-          <p className="mt-3 text-center text-xs text-gray-400">
-            Press Esc or select Close to return to the editor
-          </p>
         </div>
       )}
 
-      <style jsx global>{`
-        @page {
-          size: A4;
-          margin: 0;
-        }
-
-        @media print {
-          html,
-          body {
-            background: #ffffff !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-
-          body * {
-            visibility: hidden !important;
-          }
-
-          .resume-print-area,
-          .resume-print-area * {
-            visibility: visible !important;
-          }
-
-          .resume-print-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 210mm !important;
-            overflow: visible !important;
-            box-shadow: none !important;
-            background: white !important;
-          }
-
-          .resume-paper {
-            width: 210mm !important;
-            min-height: 0 !important;
-            margin: 0 !important;
-            padding: 14mm !important;
-            box-sizing: border-box !important;
-          }
-
-          .print\\:hidden {
-            display: none !important;
-          }
-
-          a {
-            color: #18181b !important;
-            text-decoration: none !important;
-          }
-
-          section,
-          article > header,
-          article > section > div > div {
-            break-inside: avoid;
-          }
-
-          * {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-        }
-      `}</style>
+      {/* Separate hidden source for PDF generation */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed left-0 top-0 -z-10"
+        style={{ width: PAGE_WIDTH, opacity: 0 }}
+      >
+        <div ref={downloadRef} style={{ width: PAGE_WIDTH }}>
+          <ResumeDocument resume={resume} />
+        </div>
+      </div>
     </div>
   );
 }
