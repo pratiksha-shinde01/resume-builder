@@ -243,14 +243,9 @@ function ResumeDocument({ resume }: ResumePreviewProps) {
 
         <div className="space-y-3">
           {education.map((item, index) => (
-            <div
-              key={`${item.institution}-${index}`}
-              className="resume-entry"
-            >
+            <div key={`${item.institution}-${index}`} className="resume-entry">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <h3 className={itemHeading}>
-                  {item.degree || "Degree"}
-                </h3>
+                <h3 className={itemHeading}>{item.degree || "Degree"}</h3>
 
                 {dateRange(item.startDate, item.endDate) && (
                   <span className={mutedText}>
@@ -260,9 +255,7 @@ function ResumeDocument({ resume }: ResumePreviewProps) {
               </div>
 
               {item.institution && (
-                <p className={`${mutedText} mt-0.5`}>
-                  {item.institution}
-                </p>
+                <p className={`${mutedText} mt-0.5`}>{item.institution}</p>
               )}
             </div>
           ))}
@@ -286,10 +279,7 @@ function ResumeDocument({ resume }: ResumePreviewProps) {
             const live = cleanUrl(project.LiveUrl);
 
             return (
-              <div
-                key={`${project.title}-${index}`}
-                className="resume-entry"
-              >
+              <div key={`${project.title}-${index}`} className="resume-entry">
                 <h3 className={itemHeading}>
                   {project.title || "Project"}
                 </h3>
@@ -316,7 +306,6 @@ function ResumeDocument({ resume }: ResumePreviewProps) {
                         GitHub
                       </a>
                     )}
-
                     {live && (
                       <a href={live} target="_blank" rel="noreferrer">
                         Live Demo
@@ -355,7 +344,6 @@ function ResumeDocument({ resume }: ResumePreviewProps) {
         className="resume-section mt-5"
       >
         <h2 className={sectionHeading}>Certifications</h2>
-
         <ul className="list-disc space-y-1.5 pl-4 text-[11px] leading-relaxed text-slate-700">
           {certifications.map((certification, index) => (
             <li key={`${certification}-${index}`}>{certification}</li>
@@ -371,7 +359,6 @@ function ResumeDocument({ resume }: ResumePreviewProps) {
 
     const measuredHeader =
       root.querySelector<HTMLElement>("[data-measure-header]");
-
     const source =
       root.querySelector<HTMLElement>("[data-measure-sections]");
 
@@ -392,7 +379,6 @@ function ResumeDocument({ resume }: ResumePreviewProps) {
 
     for (const section of sectionElements) {
       const style = window.getComputedStyle(section);
-
       const sectionHeight =
         section.getBoundingClientRect().height +
         (parseFloat(style.marginTop) || 0) +
@@ -479,12 +465,10 @@ function ResumeDocument({ resume }: ResumePreviewProps) {
               }}
             >
               {index === 0 && header}
-
               <div
                 className="resume-page-content flex-1"
                 dangerouslySetInnerHTML={{ __html: page.join("") }}
               />
-
               <footer className="mt-6 flex justify-between border-t border-slate-200 pt-3 text-[9px] font-medium tracking-wider text-slate-400">
                 <span>RESUME</span>
                 <span>
@@ -545,13 +529,13 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
   const scaledPageWidth = PAGE_WIDTH * scale;
   const scaledPageHeight = PAGE_HEIGHT * scale;
 
-  const zoomIn = () => {
+  const zoomIn = useCallback(() => {
     setZoom((current) => Math.min(150, current + 10));
-  };
+  }, []);
 
-  const zoomOut = () => {
+  const zoomOut = useCallback(() => {
     setZoom((current) => Math.max(30, current - 10));
-  };
+  }, []);
 
   const updateFitZoom = useCallback(() => {
     const container = previewRef.current;
@@ -565,27 +549,16 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
 
   useEffect(() => {
     updateFitZoom();
-
-    const container = previewRef.current;
-    if (!container) return;
-
-    const observer = new ResizeObserver(() => updateFitZoom());
-    observer.observe(container);
-
-    return () => observer.disconnect();
   }, [updateFitZoom]);
 
   useEffect(() => {
     if (!isFocusMode) return;
 
     const previousOverflow = document.body.style.overflow;
-
     document.body.style.overflow = "hidden";
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsFocusMode(false);
-      }
+      if (event.key === "Escape") setIsFocusMode(false);
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -598,7 +571,6 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
 
   const handleDownloadPDF = async () => {
     const element = downloadRef.current;
-
     if (!element || isDownloading) return;
 
     setIsDownloading(true);
@@ -666,9 +638,11 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
     }
   };
 
+  const closeFocusMode = () => setIsFocusMode(false);
+
   return (
     <div className="w-full min-w-0">
-      {/* Preview heading and download */}
+      {/* Heading and actions */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold tracking-tight text-white">
@@ -679,14 +653,26 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleDownloadPDF}
-          disabled={isDownloading}
-          className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/20 transition hover:bg-violet-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isDownloading ? "Generating PDF..." : "Download PDF"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsFocusMode(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#202020] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+            aria-label="Open resume focus mode"
+          >
+            <span aria-hidden="true">⛶</span>
+            Focus Mode
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDownloadPDF}
+            disabled={isDownloading}
+            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDownloading ? "Generating PDF..." : "Download PDF"}
+          </button>
+        </div>
       </div>
 
       {/* Normal preview zoom controls */}
@@ -701,7 +687,7 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
             onClick={zoomOut}
             disabled={zoom <= 30}
             aria-label="Zoom out"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-lg text-white transition hover:bg-white/10 disabled:opacity-40"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-lg text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
           >
             −
           </button>
@@ -715,7 +701,7 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
             onClick={zoomIn}
             disabled={zoom >= 150}
             aria-label="Zoom in"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-lg text-white transition hover:bg-white/10 disabled:opacity-40"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-lg text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
           >
             +
           </button>
@@ -743,21 +729,11 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
           }}
         >
           <div
-            className="absolute left-0 top-0 cursor-zoom-in"
+            className="absolute left-0 top-0"
             style={{
               width: PAGE_WIDTH,
               transform: `scale(${scale})`,
               transformOrigin: "top left",
-            }}
-            onClick={() => setIsFocusMode(true)}
-            role="button"
-            tabIndex={0}
-            aria-label="Open resume focus preview"
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                setIsFocusMode(true);
-              }
             }}
           >
             <ResumeDocument resume={resume} />
@@ -765,24 +741,24 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
         </div>
       </div>
 
-      {/* Focus mode backdrop */}
+      {/* Full-screen focus mode */}
       {isFocusMode && (
         <div
-          className="fixed inset-0 z-[9998] bg-black/70 backdrop-blur-md"
-          onClick={() => setIsFocusMode(false)}
+          className="fixed inset-0 z-[9998] bg-black/75 backdrop-blur-sm"
+          onClick={closeFocusMode}
           aria-hidden="true"
         />
       )}
 
-      {/* Focus mode */}
       {isFocusMode && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Resume focus preview"
-          className="fixed inset-0 z-[9999] flex flex-col overflow-y-auto bg-[#111111]/95 px-3 py-4 sm:px-6 sm:py-6"
+          className="fixed inset-0 z-[9999] flex flex-col overflow-hidden bg-[#111111] px-3 py-4 sm:px-6 sm:py-5"
         >
-          <div className="sticky top-0 z-10 mx-auto mb-5 flex w-full max-w-5xl shrink-0 items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#191919]/95 px-4 py-3 shadow-lg backdrop-blur">
+          {/* Focus toolbar */}
+          <div className="relative z-10 mx-auto mb-4 flex w-full max-w-6xl shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#191919] px-4 py-3 shadow-lg">
             <div>
               <p className="text-sm font-semibold text-white">
                 Resume Preview
@@ -792,7 +768,7 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={zoomOut}
@@ -803,7 +779,7 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
                 −
               </button>
 
-              <span className="min-w-[42px] text-center text-xs text-white">
+              <span className="min-w-[42px] text-center text-xs tabular-nums text-white">
                 {zoom}%
               </span>
 
@@ -819,6 +795,20 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
 
               <button
                 type="button"
+                onClick={() => {
+                  const availableWidth = window.innerWidth - 48;
+                  const fit = Math.floor(
+                    (availableWidth / PAGE_WIDTH) * 100
+                  );
+                  setZoom(Math.min(100, Math.max(30, fit)));
+                }}
+                className="rounded-lg border border-violet-500/40 px-3 py-2 text-xs font-medium text-violet-300 hover:bg-violet-500/10"
+              >
+                Fit
+              </button>
+
+              <button
+                type="button"
                 onClick={handleDownloadPDF}
                 disabled={isDownloading}
                 className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-50 sm:px-4 sm:text-sm"
@@ -828,7 +818,7 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
 
               <button
                 type="button"
-                onClick={() => setIsFocusMode(false)}
+                onClick={closeFocusMode}
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-white transition hover:bg-white/10"
                 aria-label="Close preview"
               >
@@ -837,29 +827,33 @@ export default function ResumePreview({ resume }: ResumePreviewProps) {
             </div>
           </div>
 
-          <div className="flex w-full flex-col items-center gap-6 overflow-x-auto pb-8">
-            <div
-              className="relative shrink-0"
-              style={{
-                width: scaledPageWidth,
-                height: scaledPageHeight,
-              }}
-            >
+          {/* Scrollable full-size resume */}
+          <div className="flex-1 overflow-auto">
+            <div className="mx-auto flex w-max min-w-full flex-col items-center gap-6 px-2 pb-8">
               <div
+                className="relative shrink-0"
                 style={{
-                  width: PAGE_WIDTH,
-                  transform: `scale(${scale})`,
-                  transformOrigin: "top left",
+                  width: scaledPageWidth,
+                  height: scaledPageHeight,
                 }}
               >
-                <ResumeDocument resume={resume} />
+                <div
+                  className="absolute left-0 top-0"
+                  style={{
+                    width: PAGE_WIDTH,
+                    transform: `scale(${scale})`,
+                    transformOrigin: "top left",
+                  }}
+                >
+                  <ResumeDocument resume={resume} />
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Separate hidden source for PDF generation */}
+      {/* Hidden source for PDF generation */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed left-0 top-0 -z-10"
