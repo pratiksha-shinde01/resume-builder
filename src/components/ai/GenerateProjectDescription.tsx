@@ -1,16 +1,19 @@
-
 "use client";
 
 import { useState } from "react";
 import api from "@/lib/axios";
 
 interface GenerateProjectDescriptionProps {
-  onApply: (description: string) => void;
+  onApply: (data: {
+    title: string;
+    description: string;
+  }) => void;
 }
 
 export default function GenerateProjectDescription({
   onApply,
 }: GenerateProjectDescriptionProps) {
+  const [projectTitle, setProjectTitle] = useState("");
   const [experienceLevel, setExperienceLevel] = useState("Fresher");
   const [techStack, setTechStack] = useState("");
   const [jobType, setJobType] = useState("Frontend Developer");
@@ -20,8 +23,15 @@ export default function GenerateProjectDescription({
   const [message, setMessage] = useState("");
 
   async function handleGenerate() {
-    if (!techStack.trim() || !jobType.trim()) {
-      setError("Please enter the project tech stack and target job role.");
+    if (
+      !projectTitle.trim() ||
+      !techStack.trim() ||
+      !jobType.trim() ||
+      !experienceLevel.trim()
+    ) {
+      setError(
+        "Please enter the project title, tech stack, experience level, and target job role."
+      );
       setMessage("");
       return;
     }
@@ -46,13 +56,12 @@ export default function GenerateProjectDescription({
       const response = await api.post(
         "/ai/generate-project-description",
         {
+          projectTitle: projectTitle.trim(),
           experienceLevel,
           jobTitle: jobType.trim(),
           techStack: technologies,
         }
       );
-
-      console.log("Project description API response:", response.data);
 
       if (!response.data?.success) {
         throw new Error(
@@ -61,8 +70,6 @@ export default function GenerateProjectDescription({
       }
 
       const result = response.data?.data?.projectDescription;
-
-      console.log("Generated description:", result);
 
       if (typeof result !== "string" || !result.trim()) {
         throw new Error(
@@ -92,27 +99,39 @@ export default function GenerateProjectDescription({
           apiError.message ||
           "Unable to generate project description. Please try again."
       );
+
       setMessage("");
     } finally {
       setLoading(false);
     }
   }
 
-  function handleApply() {
-    if (!description.trim()) {
-      setError("Please generate a description first.");
-      return;
-    }
 
-    onApply(description.trim());
-    setError("");
-    setMessage("Project description applied successfully!");
+function handleApply() {
+  if (!projectTitle.trim() || !description.trim()) {
+    setError(
+      "Please enter a project title and generate a description first."
+    );
+    setMessage("");
+    return;
   }
+
+  setError("");
+  setMessage("");
+
+  onApply({
+    title: projectTitle.trim(),
+    description: description.trim(),
+  });
+}
+
 
   return (
     <section className="space-y-5 rounded-2xl border border-[#292536] bg-[#12111B] p-5 sm:p-7">
       <div>
-        <p className="text-sm font-medium text-violet-400">AI POWERED</p>
+        <p className="text-sm font-medium text-violet-400">
+          AI POWERED
+        </p>
 
         <h2 className="mt-2 text-xl font-semibold text-white">
           AI Project Description Generator
@@ -123,8 +142,28 @@ export default function GenerateProjectDescription({
         </p>
       </div>
 
+      {/* Project Title */}
       <div className="space-y-2">
-        <label htmlFor="project-experience" className="text-sm text-gray-200">
+        <label htmlFor="project-title" className="text-sm text-gray-200">
+          Project Title
+        </label>
+
+        <input
+          id="project-title"
+          type="text"
+          value={projectTitle}
+          onChange={(event) => setProjectTitle(event.target.value)}
+          placeholder="e.g. Movie Booking Website"
+          className="w-full rounded-xl border border-[#353044] bg-[#0B0B12] p-3 text-white outline-none focus:border-violet-500"
+        />
+      </div>
+
+      {/* Experience Level */}
+      <div className="space-y-2">
+        <label
+          htmlFor="project-experience"
+          className="text-sm text-gray-200"
+        >
           Experience Level
         </label>
 
@@ -141,8 +180,12 @@ export default function GenerateProjectDescription({
         </select>
       </div>
 
+      {/* Tech Stack */}
       <div className="space-y-2">
-        <label htmlFor="project-tech-stack" className="text-sm text-gray-200">
+        <label
+          htmlFor="project-tech-stack"
+          className="text-sm text-gray-200"
+        >
           Project Tech Stack
         </label>
 
@@ -160,8 +203,12 @@ export default function GenerateProjectDescription({
         </p>
       </div>
 
+      {/* Target Job Role */}
       <div className="space-y-2">
-        <label htmlFor="project-job-type" className="text-sm text-gray-200">
+        <label
+          htmlFor="project-job-type"
+          className="text-sm text-gray-200"
+        >
           Target Job Role
         </label>
 
@@ -175,27 +222,36 @@ export default function GenerateProjectDescription({
         />
       </div>
 
+      {/* Generate Button */}
       <button
         type="button"
         onClick={handleGenerate}
-        disabled={loading || !techStack.trim() || !jobType.trim()}
+        disabled={
+          loading ||
+          !projectTitle.trim() ||
+          !techStack.trim() ||
+          !jobType.trim()
+        }
         className="w-full rounded-xl bg-violet-600 px-5 py-3 font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
       >
         {loading ? "Generating..." : "Generate Description"}
       </button>
 
+      {/* Error Message */}
       {error && (
         <p role="alert" className="text-sm text-red-400">
           {error}
         </p>
       )}
 
+      {/* Success Message */}
       {message && (
         <p role="status" className="text-sm text-emerald-400">
           {message}
         </p>
       )}
 
+      {/* Generated Description */}
       {description && (
         <div className="space-y-4 border-t border-[#292536] pt-5">
           <label

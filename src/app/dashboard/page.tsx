@@ -198,7 +198,7 @@ export default function DashboardPage() {
 
               <div>
                 <p className="text-[15px] font-bold tracking-tight">
-                  Resume<span className="text-violet-400">AI</span>
+                  Resumi<span className="text-violet-400">FY</span>
                 </p>
                 <p className="text-[10px] tracking-[0.18em] text-[#9692B1]">
                   CAREER WORKSPACE
@@ -630,7 +630,7 @@ export default function DashboardPage() {
           </section>
 
           <footer className="mt-16 border-t border-white/[0.08] pt-6 text-center text-xs text-[#85819D]">
-            Built for your next career move · ResumeAI
+            Built for your next career move · Resumify
           </footer>
         </div>
       </div>

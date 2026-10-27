@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -27,6 +28,8 @@ import GenerateProjectDescription from "@/components/ai/GenerateProjectDescripti
 import GenerateExperienceDescription from "@/components/ai/GenerateExperienceDescription";
 import GenerateATSScore from "@/components/ai/GenerateATSScore";
 
+import type { ICertification } from "@/types/resume.types";
+
 type Resume = {
   _id: string;
   title?: string;
@@ -36,7 +39,7 @@ type Resume = {
   workExperience?: WorkExperience[];
   skills?: string[];
   projects?: Project[];
-  certifications?: string[];
+  certifications?: ICertification[];
 };
 
 const emptyPersonalInfo: PersonalInfo = {
@@ -91,7 +94,7 @@ export default function ResumeEditorPage() {
     useState<WorkExperience[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
-  const [certifications, setCertifications] = useState<string[]>([]);
+  const [certifications, setCertifications] = useState<ICertification[]>([]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -131,7 +134,19 @@ export default function ResumeEditorPage() {
       setWorkExperience(data.workExperience ?? []);
       setProjects(data.projects ?? []);
       setSkills(data.skills ?? []);
-      setCertifications(data.certifications ?? []);
+
+      // Support both older string certifications and the new object format.
+      setCertifications(
+        (data.certifications ?? []).map((cert) =>
+          typeof cert === "string"
+            ? { name: cert, organization: "", issueDate: "" }
+            : {
+                name: cert.name ?? "",
+                organization: cert.organization ?? "",
+                issueDate: cert.issueDate ?? "",
+              }
+        )
+      );
     } catch (err) {
       console.error("Fetch resume error:", err);
       setError("Unable to load resume. Please try again.");
@@ -162,23 +177,28 @@ export default function ResumeEditorPage() {
     `Education:\n${education
       .map(
         (item) =>
-          `${item.degree} at ${item.institution}, ${item.startDate} - ${item.endDate}`
+          `${item.degree} at ${item.institution}, ${item.startDate} - ${item.endDate ?? ""}`
       )
       .join("\n")}`,
     `Work Experience:\n${workExperience
       .map(
         (item) =>
-          `${item.position} at ${item.company}, ${item.startDate} - ${item.endDate}\n${item.description}`
+          `${item.position} at ${item.company}, ${item.startDate} - ${item.endDate ?? ""}\n${item.description}`
       )
       .join("\n")}`,
     `Projects:\n${projects
       .map(
         (item) =>
-          `${item.title}\n${item.description}\nTech Stack: ${item.techstack?.join(", ")}\nGitHub: ${item.githubUrl}\nLive URL: ${item.LiveUrl}`
+          `${item.title}\n${item.description}\nTech Stack: ${item.techstack?.join(", ")}\nGitHub: ${item.githubUrl ?? ""}\nLive URL: ${item.LiveUrl ?? ""}`
       )
       .join("\n")}`,
     `Skills: ${skills.join(", ")}`,
-    `Certifications: ${certifications.join(", ")}`,
+    `Certifications:\n${certifications
+      .map(
+        (cert) =>
+          `${cert.name} - ${cert.organization ?? ""} - ${cert.issueDate ?? ""}`
+      )
+      .join("\n")}`,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -292,7 +312,7 @@ export default function ResumeEditorPage() {
     );
   }
 
-  function handleCertificationsSaved(saved: string[]) {
+  function handleCertificationsSaved(saved: ICertification[]) {
     setCertifications(saved);
     setResume((previous) =>
       previous ? { ...previous, certifications: saved } : previous
@@ -333,54 +353,84 @@ export default function ResumeEditorPage() {
     }
   }
 
-  async function handleGeneratedProjectDescription(
-    description: string
-  ) {
-    if (projects.length === 0) {
-      setError(
-        "Add a project in Manual Edit before generating its description."
-      );
-      return;
-    }
+async function handleGeneratedProjectDescription(data: {
+  title: string;
+  description: string;
+}) {
+  const title = data.title.trim();
+  const description = data.description.trim();
 
-    const updatedProjects = [...projects];
-    const lastIndex = updatedProjects.length - 1;
-
-    updatedProjects[lastIndex] = {
-      ...updatedProjects[lastIndex],
-      description,
-    };
-
-    try {
-      clearFeedback();
-
-      const response = await api.patch(`/resume/${resumeId}`, {
-        projects: updatedProjects,
-      });
-
-      if (!response.data?.success) {
-        throw new Error(
-          response.data?.message || "Could not save project description."
-        );
-      }
-
-      const savedProjects: Project[] =
-        response.data.data?.projects ?? updatedProjects;
-
-      handleProjectsSaved(savedProjects);
-      setMessage("Project description saved successfully!");
-    } catch (err) {
-      console.error("Save project description error:", err);
-      setError("Project description could not be saved.");
-    }
+  if (!title || !description) {
+    setError("Project title and description are required.");
+    return;
   }
+
+  try {
+    clearFeedback();
+
+    const resumeResponse = await api.get(`/resume/${resumeId}`);
+
+    if (!resumeResponse.data?.success) {
+      throw new Error("Could not fetch the latest resume.");
+    }
+
+    const resumeData =
+      resumeResponse.data.data?.resume ?? resumeResponse.data.data;
+
+    const existingProjects: Project[] = resumeData.projects ?? [];
+
+    let updatedProjects: Project[];
+
+    if (existingProjects.length === 0) {
+      updatedProjects = [
+        {
+          title,
+          description,
+          techstack: [],
+          githubUrl: "",
+          LiveUrl: "",
+        } as Project,
+      ];
+    } else {
+      updatedProjects = existingProjects.map((project, index) =>
+        index === existingProjects.length - 1
+          ? { ...project, title, description }
+          : project
+      );
+    }
+
+    const response = await api.patch(`/resume/${resumeId}`, {
+      projects: updatedProjects,
+    });
+
+    if (!response.data?.success) {
+      throw new Error(
+        response.data?.message || "Could not save the generated project."
+      );
+    }
+
+    const savedProjects: Project[] =
+      response.data.data?.projects ?? updatedProjects;
+
+    handleProjectsSaved(savedProjects);
+    setMessage("Project title and description saved successfully!");
+  } catch (err) {
+    console.error("Save generated project error:", err);
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Project could not be saved. Please try again."
+    );
+  }
+}
+
 
   async function handleGeneratedExperienceDescription(
     description: string
   ) {
     if (workExperience.length === 0) {
       setError(
-        "Add a work experience entry in Manual Edit before generating its description."
+        "Add a work experience entry in Manual Editor before generating its description."
       );
       return;
     }
@@ -479,8 +529,7 @@ export default function ResumeEditorPage() {
   }
 
   return (
-   <main className="relative min-h-screen bg-[#09090F] px-4 py-5 text-white selection:bg-violet-500/30 sm:px-6 lg:px-8 lg:py-7">
-      {/* Background glow */}
+    <main className="relative min-h-screen bg-[#0B0D19] px-4 py-5 text-white selection:bg-violet-500/30 sm:px-6 lg:px-8 lg:py-7">
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 overflow-hidden"
@@ -491,7 +540,6 @@ export default function ResumeEditorPage() {
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-[1600px]">
-        {/* Top navigation */}
         <header className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] pb-5">
             <button
@@ -510,7 +558,7 @@ export default function ResumeEditorPage() {
                 R
               </div>
               <span className="text-sm font-bold tracking-tight">
-                Resume<span className="text-violet-400">AI</span>
+                Resumi<span className="text-violet-400">FY</span>
               </span>
             </div>
           </div>
@@ -549,7 +597,6 @@ export default function ResumeEditorPage() {
           </div>
         </header>
 
-        {/* Mode selector */}
         <section className="mb-7 rounded-2xl border border-white/[0.08] bg-[#111019]/90 p-2 shadow-lg shadow-black/10">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
@@ -628,7 +675,6 @@ export default function ResumeEditorPage() {
           </div>
         </section>
 
-        {/* Feedback */}
         {error && (
           <div
             role="alert"
@@ -653,11 +699,7 @@ export default function ResumeEditorPage() {
           </div>
         )}
 
-      
-       
-        {/* Editor + preview */}
         <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] xl:gap-8">
-          {/* LEFT: AI studio / Manual editor */}
           <section className="min-w-0 space-y-5">
             {!isEditing ? (
               <>
@@ -759,17 +801,31 @@ export default function ResumeEditorPage() {
                   />
                 </section>
 
+                
                 <section className="rounded-2xl border border-white/[0.08] bg-[#12111B] p-5 sm:p-7">
                   <SectionHeading
-                    eyebrow="03 · Academics"
-                    title="Education"
-                    description="Showcase your degree, institution and academic timeline."
+                    eyebrow="06 · Expertise"
+                    title="Skills"
+                    description="List the relevant technical skills for your target role."
                   />
-                  <EducationSection
+                  <SkillsSection
                     resumeId={resumeId}
-                    education={education}
-                    onEducationChange={setEducation}
-                    onSaved={handleEducationSaved}
+                    skills={skills}
+                    onSkillsChange={setSkills}
+                    onSaved={handleSkillsSaved}
+                  />
+                </section>
+                         <section className="rounded-2xl border border-white/[0.08] bg-[#12111B] p-5 sm:p-7">
+                  <SectionHeading
+                    eyebrow="05 · Portfolio"
+                    title="Projects"
+                    description="Present projects that demonstrate your practical skills."
+                  />
+                  <ProjectsSection
+                    resumeId={resumeId}
+                    projects={projects}
+                    onProjectsChange={setProjects}
+                    onSaved={handleProjectsSaved}
                   />
                 </section>
 
@@ -786,32 +842,18 @@ export default function ResumeEditorPage() {
                     onSaved={handleWorkExperienceSaved}
                   />
                 </section>
-
+                
                 <section className="rounded-2xl border border-white/[0.08] bg-[#12111B] p-5 sm:p-7">
                   <SectionHeading
-                    eyebrow="05 · Portfolio"
-                    title="Projects"
-                    description="Present projects that demonstrate your practical skills."
+                    eyebrow="03 · Academics"
+                    title="Education"
+                    description="Showcase your degree, institution and academic timeline."
                   />
-                  <ProjectsSection
+                  <EducationSection
                     resumeId={resumeId}
-                    projects={projects}
-                    onProjectsChange={setProjects}
-                    onSaved={handleProjectsSaved}
-                  />
-                </section>
-
-                <section className="rounded-2xl border border-white/[0.08] bg-[#12111B] p-5 sm:p-7">
-                  <SectionHeading
-                    eyebrow="06 · Expertise"
-                    title="Skills"
-                    description="List the relevant technical skills for your target role."
-                  />
-                  <SkillsSection
-                    resumeId={resumeId}
-                    skills={skills}
-                    onSkillsChange={setSkills}
-                    onSaved={handleSkillsSaved}
+                    education={education}
+                    onEducationChange={setEducation}
+                    onSaved={handleEducationSaved}
                   />
                 </section>
 
@@ -819,7 +861,7 @@ export default function ResumeEditorPage() {
                   <SectionHeading
                     eyebrow="07 · Credentials"
                     title="Certifications"
-                    description="Include relevant courses and professional certifications."
+                    description="Include the certificate name, issuing organization and issue date."
                   />
                   <CertificationsSection
                     resumeId={resumeId}
@@ -832,10 +874,8 @@ export default function ResumeEditorPage() {
             )}
           </section>
 
-          {/* RIGHT: Sticky live preview */}
           <aside className="hidden min-w-0 self-start md:sticky md:top-5 md:block">
             <div className="flex max-h-[calc(100vh-2.5rem)] flex-col overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111019]/95 shadow-2xl shadow-black/20">
-              {/* Preview header stays visible */}
               <div className="shrink-0 border-b border-white/[0.07]">
                 <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
                   <div className="flex min-w-0 items-center gap-3">
@@ -857,11 +897,8 @@ export default function ResumeEditorPage() {
                     Live
                   </span>
                 </div>
-
-           
               </div>
 
-              {/* Only the preview content scrolls internally if needed */}
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5 [scrollbar-color:#454052_transparent] [scrollbar-width:thin]">
                 <div className="overflow-hidden rounded-xl border border-white/[0.10] bg-[#20202A] p-2 sm:p-3">
                   <ResumePreview
@@ -869,10 +906,10 @@ export default function ResumeEditorPage() {
                       title: resumeTitle,
                       summary,
                       personalInfo,
-                      education,
-                      workExperience,
-                      projects,
                       skills,
+                      projects,
+                      workExperience,
+                      education,
                       certifications,
                     }}
                   />
@@ -889,10 +926,9 @@ export default function ResumeEditorPage() {
           </aside>
         </div>
 
-
         <footer className="mt-10 border-t border-white/[0.06] py-5 text-center">
           <p className="text-xs text-[#625E72]">
-            Made for your next career move · ResumeAI
+            Made for your next career move · ResumiFY
           </p>
         </footer>
       </div>

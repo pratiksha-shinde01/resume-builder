@@ -83,7 +83,7 @@ export default function HomePage() {
 
             <div>
               <span className="text-xl font-bold tracking-tight">
-                Resume<span className="text-violet-400">AI</span>
+                Resumi<span className="text-violet-400">FY</span>
               </span>
               <p className="mt-0.5 text-[10px] uppercase tracking-[0.2em] text-gray-500">
                 Your career companion
@@ -476,7 +476,7 @@ export default function HomePage() {
       <footer className="relative z-10 border-t border-white/[0.07] px-5 py-8 sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
           <Link href="/" className="text-lg font-bold">
-            Resume<span className="text-violet-400">AI</span>
+            Resumi<span className="text-violet-400">fy</span>
           </Link>
 
           <p className="text-sm text-gray-500">
@@ -484,7 +484,7 @@ export default function HomePage() {
           </p>
 
           <p className="text-xs text-gray-600">
-            © {new Date().getFullYear()} ResumeAI
+            © {new Date().getFullYear()} Resumify
           </p>
         </div>
       </footer>

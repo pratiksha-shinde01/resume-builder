@@ -14,6 +14,8 @@ export interface GenerateProjrctDescriptionBody{
   experienceLevel: string;
   jobTitle: string;
   techStack:string[];
+      projectTitle:string;
+
 }
 
 export interface GenerateExperianceDescriptionBody{

@@ -87,7 +87,7 @@ export default function LoginPage() {
           </div>
 
           <span className="text-xl font-bold tracking-tight">
-            Resume<span className="text-violet-400">AI</span>
+            Resumi<span className="text-violet-400">FY</span>
           </span>
         </a>
 
@@ -277,7 +277,7 @@ export default function LoginPage() {
 
           <div className="my-7 flex items-center gap-4">
             <div className="h-px flex-1 bg-white/[0.08]" />
-            <span className="text-xs text-[#777386]">NEW TO RESUMEAI?</span>
+            <span className="text-xs text-[#777386]">NEW TO Resumify?</span>
             <div className="h-px flex-1 bg-white/[0.08]" />
           </div>
 
