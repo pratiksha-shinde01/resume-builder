@@ -122,13 +122,20 @@ export default function GenerateSkills({ onApply }: GenerateSkillsProps) {
         </select>
       </div>
 
-      <button
+     <button
         type="button"
         onClick={handleGenerate}
-        disabled={loading || !jobTitle.trim()}
-        className="w-full rounded-xl bg-violet-600 px-5 py-3 font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+        disabled={loading}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
-        {loading ? "Generating Skills..." : "Generate Skills"}
+        {loading ? (
+          <>
+            <span className="animate-spin">⏳</span>
+            Generating Skills...
+          </>
+        ) : (
+          <>✨ Generate Skills</>
+        )}
       </button>
 
       {error && (

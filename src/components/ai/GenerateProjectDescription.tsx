@@ -269,13 +269,21 @@ function handleApply() {
             className="w-full rounded-xl border border-[#353044] bg-[#0B0B12] p-4 text-sm leading-6 text-white outline-none focus:border-violet-500"
           />
 
-          <button
-            type="button"
-            onClick={handleApply}
-            className="rounded-xl border border-violet-500/40 px-5 py-3 font-medium text-violet-300 transition hover:bg-violet-500/10"
-          >
-            Apply Description
-          </button>
+       <button
+        type="button"
+        onClick={handleApply}
+        disabled={loading}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+      >
+        {loading ? (
+          <>
+            <span className="animate-spin">⏳</span>
+            Generating Description...
+          </>
+        ) : (
+          <>✨ Generate Description</>
+        )}
+      </button>
         </div>
       )}
     </section>
